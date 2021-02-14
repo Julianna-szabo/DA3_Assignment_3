@@ -20,8 +20,8 @@ library(caret)
 library(rpart.plot)
 
 # Import data
-
-df <- read_csv("data/raw/hotels-vienna.csv")
+data_url <- "https://raw.githubusercontent.com/Julianna-szabo/DA3_Assignment_3/main/data/raw/hotels-vienna.csv"
+df <- read_csv(data_url)
 
 # Take a quick look at the data
 glimpse(df)
@@ -252,6 +252,10 @@ df <- df %>%
     rating = ifelse(is.na(df$rating) == TRUE, 0, df$rating),
     rating_flag = ifelse(is.na(df$rating) == TRUE, 1, 0),
   )
+
+# Save cleaned file
+
+write_csv(df, "data/clean/hotels_vienna_clean")
 
 # X variable selection ----------------------------------------------------
 
@@ -522,7 +526,8 @@ system.time({
   )
 })
 
-rf_model_1
+rf1_RMSE <- summary(rf_model_1$resample$RMSE)
+rf1_R_squared <- summary(rf_model_1$resample$Rsquared)
 
 # Complex random forest
 set.seed(19920828)
@@ -538,16 +543,11 @@ system.time({
   )
 })
 
-rf_model_2
+rf2_RMSE <- summary(rf_model_2$resample$RMSE)
+rf2_R_squared <- summary(rf_model_2$resample$Rsquared)
 
-results <- resamples(
-  list(
-    model_1  = rf_model_1,
-    model_2  = rf_model_2
-  )
-) 
+results_rf <- rbind(rf1_RMSE, rf2_RMSE, rf1_R_squared, rf2_R_squared)
 
-summary(results)
 
 # RF model 1 has the lower RSME so that will be used for further reference
 

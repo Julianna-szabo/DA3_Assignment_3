@@ -2,7 +2,10 @@
 title: "Hotel price predictions in Vienna"
 author: "Julianna Szabo"
 date: "2/11/2021"
-output: html_document
+output:
+  prettydoc::html_pretty:
+    theme: hpstr
+    highlight: github
 ---
 
 ```{r setup, include=FALSE}
@@ -11,7 +14,7 @@ knitr::opts_chunk$set(message = FALSE)
 knitr::opts_chunk$set(comment = FALSE)
 ```
 
-```{r, loading packages, echo=FALSE, include=FALSE, }
+```{r, loading packages, echo=FALSE, include=FALSE}
 # Clear memory
 
 rm(list = ls())
@@ -24,8 +27,7 @@ library(Hmisc)
 library(GGally)
 library(caret)
 library(rpart.plot)
-
-setwd("/Users/Terez/OneDrive - Central European University/Data_Analysis_03/DA3_Assignment_3/")
+library(pander)
 ```
 
 For this project, the aim was to predict prices of hotels in Vienna for a certain night and then find the best deals based on the prediction. THe data set used was the hotels_vienna set from Chapter 10 of the book "Data Analytics for Business, Economics, and Politics" by Gabor Bekes and Gabor Kezdi. While their analysis focused on multiple linear regression, in this project both linear and machine learning methods will be applied to this problem to see their comperative performances.
@@ -34,7 +36,8 @@ For this project, the aim was to predict prices of hotels in Vienna for a certai
 ```{r, creating sample, echo=FALSE, include=FALSE}
 # Import data ##########################################
 
-df <- read_csv("data/raw/hotels-vienna.csv")
+data_url <- "https://raw.githubusercontent.com/Julianna-szabo/DA3_Assignment_3/main/data/raw/hotels-vienna.csv"
+df <- read_csv(data_url)
 
 # Take a quick look at the data
 glimpse(df)
@@ -65,7 +68,7 @@ df %>%
 To make this project realistic, the data set was filtered down to a single weekday in November 2017. This is crucial since the prices of hotel rooms vary between months or even weeks, and weekdays differ greatly from weekends or holiday.
 
 # Label engineering
-```{r, label engeniering}
+```{r, label engeniering, echo=FALSE, include=FALSE}
 # Label engineering ########################################
 
 # My y variable will be price since that is what I'm trying to predict
@@ -75,7 +78,7 @@ To make this project realistic, the data set was filtered down to a single weekd
 price_dist <- df %>% 
   group_by(price) %>% 
   ggplot(aes(x = price)) +
-  geom_histogram() +
+  geom_histogram(col = "white") +
   labs(x = "Price (Euro)", y = "Number of occurances")
 
 describe(df$price)
@@ -90,7 +93,7 @@ df <- df %>%
 price_dist_filteres <- df %>% 
   group_by(price) %>% 
   ggplot(aes(x = price)) +
-  geom_histogram() +
+  geom_histogram(col = "white") +
   labs(x = "Price (Euro)", y = "Number of occurances")
 
 # Now the distribution looks much better
@@ -101,8 +104,10 @@ price_dist_filteres <- df %>%
 ```
 
 The dependent variable in this analysis will be price. The price in this analysis is given in Euros (the local currency). Looking at the distribution of the price it can be seen that there are some extreme values over 500. These are most likely very high end luxury hotels and not part of the average hotel offering. Since these values could distort our model for the more common price as well as these not being of interesting to the vast majority of people looking for hotels in Vienna, they have been excluded. After the limitation of the price, the graph has a much better almost normal distribution.
-```{r,price plots, echo=FALSE}
+
+```{r, echo = FALSE, warning = FALSE, out.width="50%", figures-side3, fig.show="hold"}
 price_dist
+
 price_dist_filteres
 ```
 
@@ -144,12 +149,11 @@ df %>%
   ggplot(aes(x = neighbourhood)) +
   geom_histogram(stat="count")
 
-View(df %>% 
+df %>% 
   group_by(neighbourhood) %>% 
   summarise(
     n = n()
   )
-)
 
 # This one has some variation, so we will convert it into a factor
 # Some only have one or two values though, so we make it "other" for ease of use
@@ -321,7 +325,7 @@ df %>%
 
 Overall the explanatory variables in the data were few, so it was important to check for correlation within them to not harm out mode. Looking at the correlation table, it can be seen that only variables that are based on each other have a strong correlation. The only exception are the two "rating" variables, which show that both Trip Advisor and the price comparison website have similar ratings for a property, which is good and shows consistency.
 
-```{r, correlation table, echo=FALSE}
+```{r, correlation table, echo=FALSE, fig.align="center"}
 corr_x
 ```
 
@@ -469,7 +473,7 @@ t1
 ```
 
 Four different types of models have been run on the data. Five different linear models were created with varying complexity and applied to the training set. Five fold cross validation was used to find the best model among them. The below table shows the outcomes. While Model 1 has the lowest RMSE in the test, Model 3 has the lowest BIC. In the end Model 3 was picked as the best model, because model 1 has a very high RMSE in the training set, so this small RMSE in the test set could be based on the few observations it contains.
-```{r, linear model table, echo=FALSE}
+```{r, linear model table, echo=FALSE, fig.align="center"}
 pander(t1)
 ```
 ```{r, LASSO models, include=FALSE, echo=FALSE}
@@ -544,7 +548,7 @@ summary(cart2)
 pred_cart2 <- predict(cart2, df_train, na.action = na.pass)
 rmse_cart2 <- sqrt(mean((pred_cart2 - df_train$price)^2))
 # Tree graph
-cart2_tree <- rpart.plot(cart2$finalModel, tweak=1.2, digits=-1, extra=1)
+rpart.plot(cart2$finalModel, tweak=1.2, digits=-1, extra=1)
 
 # Compare the two
 cart_compare <- data.frame(
@@ -556,9 +560,9 @@ cart_compare <- data.frame(
 
 two CART Models were also created for this analysis. One built a tree based on Model 3 (out best linear model) while the other used the coefficients of LASSO (so the most coefficients possible). Looking at the RMSEs for both the models, the one for CART 1 is lower, so that will be used for comparison later. This makes sense since CART models have a tendency to overfit, so fewer variables should reduce that tendency somewhat.
 
-```{r, CART infos, echo=FALSE}
+```{r, CART infos, echo=FALSE, fig.align="center"}
 pander(cart_compare)
-cart2_tree
+rpart.plot(cart2$finalModel, tweak=1.2, digits=-1, extra=1)
 ```
 ```{r, Random Forest models, include=FALSE, echo=FALSE}
 # Random Forest ##############################################
@@ -589,7 +593,8 @@ system.time({
   )
 })
 
-rf_model_1
+rf1_RMSE <- summary(rf_model_1$resample$RMSE)
+rf1_R_squared <- summary(rf_model_1$resample$Rsquared)
 
 # Complex random forest
 set.seed(19920828)
@@ -605,21 +610,19 @@ system.time({
   )
 })
 
-rf_model_2
+rf2_RMSE <- summary(rf_model_2$resample$RMSE)
+rf2_R_squared <- summary(rf_model_2$resample$Rsquared)
 
-results <- resamples(
-  list(
-    model_1  = rf_model_1,
-    model_2  = rf_model_2
-  )
-)
+results_rf <- rbind(rf1_RMSE, rf2_RMSE, rf1_R_squared, rf2_R_squared)
+
 # RF model 1 has the lower RSME so that will be used for further reference
 ```
 
-Similar to CART, two random forest models were created for this analysis. Again the first one based on Model 3 and the second on the more complex LASSO variables. Comparing the two, the RF Model 1 has the lower RMSE, lower MSE, and the higher R squared, therefore, this will be the model carried forward to further analysis.
+Similar to CART, two Random Forest models were created for this analysis. Again the first one based on Model 3 and the second on the more complex LASSO variables. Comparing the two, the RF Model 1 has the lower RMSE, lower MSE, and the higher R squared, therefore, this will be the model carried forward to further analysis.
 
 ```{r, RF comparison, echo=FALSE}
-pander(summary(results))
+panderOptions("table.split.table", Inf)
+pander(results_rf)
 ```
 
 ## Testing on the holdout / test set
@@ -640,11 +643,11 @@ model3_level_holdout_rmse
 # Lasso model
 
 lasso_predictions_train_rmse <-  mse_lev(predict(lasso_model, s = lasso_model$bestTune$lambda, 
-                                   newx = df_train, 
+                                   newdata = df_train, 
                                    type = "raw"), df_train$price)**(1/2)
 
 lasso_predictions_holdout_rmse <- mse_lev(predict(lasso_model, s = lasso_model$bestTune$lambda, 
-                                   newx = df_holdout, 
+                                   newdata = df_holdout, 
                                    type = "raw"), df_holdout$price)**(1/2)
 lasso_predictions_holdout_rmse
 
@@ -675,8 +678,8 @@ rf_rmse_holdout <- RMSE(df_holdout$rf_prediction, df_holdout$price)
 
 rmse_compare <- data.frame(
   "Model" = c("Linear Model", "LASSO Model","CART Tree", "Random Forest"),
-  "RMSE in Train" = c(model3_level_train_rmse, lasso_predictions_train_rmse, cart2_rmse_train, rf_rmse_train),
-  "RMSE in Holdout" = c(model3_level_holdout_rmse, lasso_predictions_holdout_rmse, cart2_rmse_holdout, rf_rmse_holdout)
+  "RMSE_in_Train" = c(model3_level_train_rmse, lasso_predictions_train_rmse, cart2_rmse_train, rf_rmse_train),
+  "RMSE_in_Holdout" = c(model3_level_holdout_rmse, lasso_predictions_holdout_rmse, cart2_rmse_holdout, rf_rmse_holdout)
 )
 ```
 
@@ -719,13 +722,13 @@ df$bestdeals <- ifelse(df$rf_prediction_res %in% tail(sort(df$rf_prediction_res,
 
 Using this best Random Forest model, it is now the goal to find the 5 best deals in Vienna for this day. This will be calculated with the residuals when comparing the predicted prices to the actual prices. The ones with the largest negative residual (as in the predicted price is much higher than the actual price) will be the best deals. You can see their information in the table below.
 
-```{r, best deals, echo=FALSE}
+```{r, best deals, echo=FALSE, fig.align="center"}
 pander(best_deals)
 ```
 
 To see eactly how good deals you are getting, this graph is very helpful. It shows how the five pink dots have predicted prices between 150 and 200 Euros, while the actual price is only around 100 Euros. This means that you are getting features that could be prices higher at a very good price, based ont he variables in the model.
 
-```{r, best deals graph, echo=FALSE}
+```{r, best deals graph, echo=FALSE, fig.align="center"}
 df %>% 
   ggplot() +
   geom_point(aes(x = rf_prediction, y = price)) +
